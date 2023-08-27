@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "minor_version": 3,
+  "key": "core.area_registry",
+  "data": {
+    "areas": [
+      {
+        "aliases": [],
+        "name": "Vardagsrum",
+        "id": "vardagsrum",
+        "picture": null
+      },
+      {
+        "aliases": [],
+        "name": "Kök",
+        "id": "kok",
+        "picture": null
+      },
+      {
+        "aliases": [],
+        "name": "Sovrum",
+        "id": "sovrum",
+        "picture": null
+      }
+    ]
+  }
+}
