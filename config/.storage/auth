@@ -112,7 +112,7 @@
         "access_token_expiration": 1800.0,
         "token": "4fbdfc4bea9dd5dafac845345dbd23a9133c7ccfcdf624638e1a0622bffcf43a3c7f1b6b8742957e030376ab228c3ad4ffbbd279acaaf9275c024d1dda12ff53",
         "jwt_key": "0fd3c1f5a639dd1032951eb245a4f8658f889498484560fbd68484b01d4748d86ed142d57174bc81fa0fe313befc48fe8b28402eadba35e78f11d7dc98116175",
-        "last_used_at": "2023-08-27T09:25:51.056275+00:00",
+        "last_used_at": "2023-08-28T18:21:48.928004+00:00",
         "last_used_ip": "172.21.0.1",
         "credential_id": "0af51632c6b74a7db91e3e78be6843d3",
         "version": "2023.7.3"

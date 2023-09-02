@@ -1,0 +1,2 @@
+2023-09-02 13:20:23.696 WARNING (Recorder) [homeassistant.components.recorder.util] The system could not validate that the sqlite3 database at //config/home-assistant_v2.db was shutdown cleanly
+2023-09-02 16:57:11.858 WARNING (MainThread) [homeassistant.components.websocket_api.http.connection] [140171713537488] from 172.21.0.1: Disconnected: Did not receive auth message within 10 seconds

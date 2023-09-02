@@ -14,16 +14,35 @@
           "device_trackers": [],
           "friendly_name": "thhel"
         },
-        "last_changed": "2023-08-27T13:30:39.840250+00:00",
-        "last_updated": "2023-08-27T13:30:41.423103+00:00",
+        "last_changed": "2023-09-02T11:20:23.661166+00:00",
+        "last_updated": "2023-09-02T11:20:29.397151+00:00",
         "context": {
-          "id": "01H8VK11CFXKQ1Z01XW493XMZY",
+          "id": "01H9ASYYENQETRSJW1FN47845V",
           "parent_id": null,
           "user_id": null
         }
       },
       "extra_data": null,
-      "last_seen": "2023-08-27T14:00:41.424710+00:00"
+      "last_seen": "2023-09-02T21:35:29.460095+00:00"
+    },
+    {
+      "state": {
+        "entity_id": "input_boolean.test",
+        "state": "on",
+        "attributes": {
+          "editable": true,
+          "friendly_name": "test"
+        },
+        "last_changed": "2023-09-02T11:20:25.129337+00:00",
+        "last_updated": "2023-09-02T11:20:25.129337+00:00",
+        "context": {
+          "id": "01H9ASYT99J2TDGMN7KKNWP8DV",
+          "parent_id": null,
+          "user_id": null
+        }
+      },
+      "extra_data": null,
+      "last_seen": "2023-09-02T21:35:29.460095+00:00"
     },
     {
       "state": {
@@ -32,16 +51,16 @@
         "attributes": {
           "friendly_name": "Google en com"
         },
-        "last_changed": "2023-08-27T13:30:41.215648+00:00",
-        "last_updated": "2023-08-27T13:30:41.215648+00:00",
+        "last_changed": "2023-09-02T11:20:25.175726+00:00",
+        "last_updated": "2023-09-02T11:20:25.175726+00:00",
         "context": {
-          "id": "01H8VK115ZHGGMYY9AKP0JMRFW",
+          "id": "01H9ASYTAQGC9JK41DQP1ZERZY",
           "parent_id": null,
           "user_id": null
         }
       },
       "extra_data": null,
-      "last_seen": "2023-08-27T14:00:41.424710+00:00"
+      "last_seen": "2023-09-02T21:35:29.460095+00:00"
     }
   ]
 }

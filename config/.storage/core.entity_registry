@@ -355,6 +355,35 @@
         "translation_key": null,
         "unique_id": "home-hourly",
         "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "area_id": null,
+        "capabilities": null,
+        "config_entry_id": null,
+        "device_class": null,
+        "device_id": null,
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "input_boolean.test",
+        "hidden_by": null,
+        "icon": null,
+        "id": "a9237c23cd4806f5e92437635a8c9a4c",
+        "has_entity_name": false,
+        "name": null,
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": null,
+        "original_icon": null,
+        "original_name": "test",
+        "platform": "input_boolean",
+        "supported_features": 0,
+        "translation_key": null,
+        "unique_id": "test",
+        "unit_of_measurement": null
       }
     ],
     "deleted_entities": []

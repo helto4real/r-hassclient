@@ -1,0 +1,47 @@
+{
+  "id": 1,
+  "type": "event",
+  "event": {
+    "event_type": "state_changed",
+    "data": {
+      "entity_id": "input_boolean.test",
+      "old_state": {
+        "entity_id": "input_boolean.test",
+        "state": "off",
+        "attributes": {
+          "editable": true,
+          "friendly_name": "test"
+        },
+        "last_changed": "2023-08-28T09:08:13.985677+00:00",
+        "last_updated": "2023-08-28T09:08:13.985677+00:00",
+        "context": {
+          "id": "01H8XPD611JJ7Q3WP5VT5FVEWN",
+          "parent_id": null,
+          "user_id": "f89f13024806490b8d879160843ddf54"
+        }
+      },
+      "new_state": {
+        "entity_id": "input_boolean.test",
+        "state": "on",
+        "attributes": {
+          "editable": true,
+          "friendly_name": "test"
+        },
+        "last_changed": "2023-08-28T09:09:05.471838+00:00",
+        "last_updated": "2023-08-28T09:09:05.471838+00:00",
+        "context": {
+          "id": "01H8XPER9ZAGWM4P3WZQ7BPKPR",
+          "parent_id": null,
+          "user_id": "f89f13024806490b8d879160843ddf54"
+        }
+      }
+    },
+    "origin": "LOCAL",
+    "time_fired": "2023-08-28T09:09:05.471838+00:00",
+    "context": {
+      "id": "01H8XPER9ZAGWM4P3WZQ7BPKPR",
+      "parent_id": null,
+      "user_id": "f89f13024806490b8d879160843ddf54"
+    }
+  }
+}
