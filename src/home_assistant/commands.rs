@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use tokio_tungstenite::tungstenite::Message;
 
+// Todo: these warnings is probably due to bad visibility that I do not really
+// understand yet :)
 #[derive(Serialize, PartialEq)]
 pub(crate) enum HaCommand {
     AuthInfo(Auth),
