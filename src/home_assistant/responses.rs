@@ -1,6 +1,4 @@
-use std::iter::Map;
-use serde_json::{Value, json};
-use std::collections::HashMap;
+use serde_json::Value;
 use serde::{Deserialize, Serialize};
 use crate::home_assistant::model::*;
 
@@ -8,7 +6,7 @@ use crate::home_assistant::model::*;
 #[derive(Deserialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub enum Response {
+pub(crate) enum Response {
     AuthRequired(AuthRequired),
     AuthOk(AuthOk),
     AuthInvalid(AuthInvalid),
@@ -20,21 +18,21 @@ pub enum Response {
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
-pub struct AuthRequired {
-    pub ha_version: String,
+pub(crate) struct AuthRequired {
+    pub(crate) ha_version: String,
 }
 
 // this is received when the service successfully autheticate
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
-pub struct AuthOk {
+pub(crate) struct AuthOk {
     pub(crate) ha_version: String,
 }
 
 // this is received if the authetication failed
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
-pub struct AuthInvalid {
+pub(crate) struct AuthInvalid {
     pub(crate) message: String,
 }
 
@@ -42,8 +40,9 @@ pub struct AuthInvalid {
 #[derive(Debug)]
 #[derive(Serialize, Deserialize)]
 pub struct WsResult {
-    success: bool,
-    result: Value,
+    pub(crate) id: u64,
+    pub(crate) success: bool,
+    pub(crate) result: Value,
 }
 
 #[derive(Debug)]

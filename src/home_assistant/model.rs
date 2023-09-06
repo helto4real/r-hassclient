@@ -1,11 +1,10 @@
-use std::any::Any;
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "event_type", content = "data")]
 pub enum HaEvent {
@@ -13,21 +12,21 @@ pub enum HaEvent {
     StateChangedEvent(StateChangedEvent),
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 #[derive(Serialize, Deserialize)]
 
 pub struct StateChangedEvent {
-    entity_id: String,
-    new_state: Option<HaState>,
-    old_state: Option<HaState>,
+    pub entity_id: String,
+    pub new_state: Option<HaState>,
+    pub old_state: Option<HaState>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct HaState {
-    entity_id: String,
-    attributes: Option<HashMap<String, Value>>,
-    state: String,
+    pub entity_id: String,
+    pub attributes: Option<HashMap<String, Value>>,
+    pub state: String,
 }
 
 // #[derive(Debug)]
@@ -38,9 +37,9 @@ pub struct HaState {
 //    
 // }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct HaError {
-    code: String,
-    message: String,
+    pub code: String,
+    pub message: String,
 }

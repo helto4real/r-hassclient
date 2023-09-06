@@ -1,8 +1,11 @@
-use std::fmt;
+use std::{fmt};
+use futures_util::Stream;
 use simple_error::SimpleError;
-use tokio_tungstenite::{connect_async, MaybeTlsStream, tungstenite::protocol::Message, WebSocketStream};
-use tokio::net::TcpStream;
+use tokio_tungstenite::{ MaybeTlsStream, WebSocketStream};
+use tokio::{net::TcpStream, sync::mpsc::error};
 use tokio_tungstenite::tungstenite::Error as TungsteniteError;
+
+use crate::home_assistant::responses::Response;
 
 pub (crate) type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
@@ -19,14 +22,19 @@ pub enum HassError {
     /// Returned when serde was unable to deserialize the values
     UnableToDeserialize(serde_json::error::Error),
 
+    SendError,
     /// Tungstenite error
     TungsteniteError(TungsteniteError),
     
     /// Returned when unable to parse the websocket server address
     WrongAddressProvided(url::ParseError),
     
+    // Return if the underlying websocket connection somehow faults
+    ConnectionError,
+
     /// Returned for errors which do not fit any of the above criterias
-    Generic(String),
+    GenericError(String),
+    UnknownPayloadReceived,
 }
 
 impl std::error::Error for HassError {}
@@ -39,31 +47,36 @@ impl fmt::Display for HassError {
             Self::AuthenticationFailed(e) => write!(f, "Authentication has failed: {}", e),
             Self::WrongAddressProvided(e) => {
                 write!(f, "Could not parse the provided address: {}", e)
-            }
+            },
+            Self::ConnectionError => write!(f, "Connection closed unexpectedly"),
             Self::UnableToDeserialize(e) => {
                 write!(f, "Unable to deserialize the received value: {}", e)
             }
             Self::TungsteniteError(e) => write!(f, "Tungstenite Error: {}", e),
+            Self::SendError => write!(f, "Send Error"),
             // Self::ChannelSend(e) => write!(f, "Channel Send Error: {}", e),
-            // Self::UnknownPayloadReceived => write!(f, "The received payload is unknown"),
+            Self::UnknownPayloadReceived => write!(f, "The received payload is unknown"),
             // Self::ReponseError(e) => write!(
             //     f,
             //     "The error code:{} with the error message: {}",
             //     e.error.as_ref().unwrap().code,
             //     e.error.as_ref().unwrap().message
             // ),
-            Self::Generic(detail) => write!(f, "Generic Error: {}", detail),
+            Self::GenericError(detail) => write!(f, "Generic Error: {}", detail),
         }
     }
 }
-
 impl From<SimpleError> for HassError {
     fn from(error: SimpleError) -> Self {
-        HassError::Generic(error.to_string())
+        HassError::GenericError(error.to_string())
     }
 }
 
-
+// impl From<tokio::sync::mpsc::error::SendError> for HassError {
+//     fn from(error: tokio::sync::mpsc:error::SendError) -> Self {
+//         HassError::SendError(error)
+//     }
+// }
 impl From<serde_json::error::Error> for HassError {
     fn from(error: serde_json::error::Error) -> Self {
         HassError::UnableToDeserialize(error)
