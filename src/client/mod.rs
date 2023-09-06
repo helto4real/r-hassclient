@@ -70,7 +70,7 @@ impl HaClient {
 
         // Message id for HA messaging
         let last_msg_id = Arc::new(AtomicU64::new(1));
-        let last_msg_clone_sender = Arc::clone(&last_msg_id);
+    let last_msg_clone_sender = Arc::clone(&last_msg_id);
 
         // Client --> Gateway
         if let Err(e) = sender_loop(last_msg_clone_sender, sink, from_client).await {
@@ -307,11 +307,13 @@ async fn receiver_loop(
                             Err(error) => to_client.send(Err(error)).await.unwrap(),
                         };
                     }
-                    Message::Binary(_) => todo!(),
-                    Message::Ping(_) => todo!(),
-                    Message::Pong(_) => todo!(),
-                    Message::Close(_) => todo!(),
-                    Message::Frame(_) => todo!(),
+                    // Just ignore these messages for now, I keep all variants for clearer code
+                    // what is ignored 
+                    Message::Binary(_) => {/*ignore*/},
+                    Message::Ping(_) => {/*ignore*/},
+                    Message::Pong(_) => {/*ignore*/},
+                    Message::Close(_) => {/*ignore*/},
+                    Message::Frame(_) => {/*ignore*/},
                 },
 
                 Some(Err(error)) => match to_client
