@@ -1,13 +1,8 @@
-use std::{fmt};
-use futures_util::Stream;
 use simple_error::SimpleError;
-use tokio_tungstenite::{ MaybeTlsStream, WebSocketStream};
-use tokio::{net::TcpStream, sync::mpsc::error};
+use std::fmt;
 use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 
-use crate::home_assistant::responses::Response;
-
-pub (crate) type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
+//pub (crate) type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 pub type HassResult<T> = std::result::Result<T, HassError>;
 
@@ -25,10 +20,10 @@ pub enum HassError {
     SendError,
     /// Tungstenite error
     TungsteniteError(TungsteniteError),
-    
+
     /// Returned when unable to parse the websocket server address
     WrongAddressProvided(url::ParseError),
-    
+
     // Return if the underlying websocket connection somehow faults
     ConnectionError,
 
@@ -47,7 +42,7 @@ impl fmt::Display for HassError {
             Self::AuthenticationFailed(e) => write!(f, "Authentication has failed: {}", e),
             Self::WrongAddressProvided(e) => {
                 write!(f, "Could not parse the provided address: {}", e)
-            },
+            }
             Self::ConnectionError => write!(f, "Connection closed unexpectedly"),
             Self::UnableToDeserialize(e) => {
                 write!(f, "Unable to deserialize the received value: {}", e)
