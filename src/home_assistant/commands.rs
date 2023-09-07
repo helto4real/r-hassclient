@@ -7,6 +7,7 @@ use tokio_tungstenite::tungstenite::Message;
 pub(crate) enum HaCommand {
     AuthInfo(Auth),
     Ping(Ask),
+    SubscribeEvent(Subscribe),
 }
 
 impl HaCommand {
@@ -20,10 +21,10 @@ impl HaCommand {
                 let cmd_str = serde_json::to_string(&ping).unwrap();
                 Message::Text(cmd_str)
             }
-            // Self::SubscribeEvent(subscribe) => {
-            //     let cmd_str = serde_json::to_string(&subscribe).unwrap();
-            //     TungsteniteMessage::Text(cmd_str)
-            // }
+            Self::SubscribeEvent(subscribe) => {
+                let cmd_str = serde_json::to_string(&subscribe).unwrap();
+                Message::Text(cmd_str)
+            }
             // Self::Unsubscribe(unsubscribe) => {
             //     let cmd_str = serde_json::to_string(&unsubscribe).unwrap();
             //     TungsteniteMessage::Text(cmd_str)
@@ -72,5 +73,12 @@ pub(crate) struct Ask {
     #[serde(rename = "type")]
     pub(crate) msg_type: String,
 }
-
+//used for Event subscribtion
+#[derive(Debug, Serialize, PartialEq)]
+pub(crate) struct Subscribe {
+    pub(crate) id: Option<u64>,
+    #[serde(rename = "type")]
+    pub(crate) msg_type: String,
+    pub(crate) event_type: String,
+}
 

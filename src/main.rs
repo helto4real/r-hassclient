@@ -22,6 +22,7 @@ async fn main() {
             }
         }
     }
+
     match signal::ctrl_c().await {
         Ok(()) => {}
         Err(err) => {

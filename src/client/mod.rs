@@ -1,5 +1,5 @@
 use crate::{
-    home_assistant::{commands::*, responses::Response},
+    home_assistant::{commands::*, responses::Response, model::HaEvent},
     types::{HassError, HassResult},
 };
 use colored::Colorize;
@@ -7,11 +7,11 @@ use futures_util::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use std::sync::{
+use std::{sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
-};
-use tokio::net::TcpStream;
+}, collections::HashMap};
+use tokio::{net::TcpStream, sync::Mutex};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio_tungstenite::{
@@ -20,31 +20,18 @@ use tokio_tungstenite::{
 
 pub(crate) type WsSink = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 pub(crate) type WsStream = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
-pub struct HaClient {
-    // url: String,
-    //on_connected_cb: Option<Box<dyn FnMut()>>,
-}
+pub(crate) type HaListener = Arc<Mutex<HashMap<u64, Box<dyn Fn(HaEvent) + Send>>>>;
+pub struct HaClient {}
 
 #[derive(Default)]
-pub struct HaClientBuilder {
-    //on_connected_cb: Option<Box<dyn FnMut()>>,
-}
+pub struct HaClientBuilder {}
 
 impl HaClientBuilder {
     pub fn new() -> HaClientBuilder {
-        // Set the minimally required fields of Foo.
-        HaClientBuilder {
-          //  on_connected_cb: None,
-        }
+        HaClientBuilder {}
     }
-    // pub fn on_connected(mut self, func: Box<dyn FnMut()>) -> HaClientBuilder {
-    //     //self.on_connected_cb = Some(func);
-    //     self
-    // }
     pub fn build(self) -> HaClient {
-        HaClient {
-            //on_connected_cb: self.on_connected_cb,
-        }
+        HaClient {}
     }
 }
 
@@ -68,18 +55,22 @@ impl HaClient {
         // Channel to reveive events from Home Assistant to client
         let (to_client, from_ha) = mpsc::channel::<HassResult<Response>>(20);
 
+        let event_listeners = Arc::new(Mutex::new(HashMap::new()));
+        let event_listeners_clone_receiver = Arc::clone(&event_listeners);
+
         // Message id for HA messaging
         let last_msg_id = Arc::new(AtomicU64::new(1));
-    let last_msg_clone_sender = Arc::clone(&last_msg_id);
+        let last_msg_clone_sender = Arc::clone(&last_msg_id);
 
-        // Client --> Gateway
+        // Client --> Home Assistant
         if let Err(e) = sender_loop(last_msg_clone_sender, sink, from_client).await {
             to_client.send(Err(e)).await.unwrap();
         }
-        receiver_loop(stream, to_client).await?;
+
+        receiver_loop(stream, to_client, event_listeners_clone_receiver).await?;
 
         println!("{}", "Successfully connected to Home Assistant!".green());
-        let ha_conn = HaConnection { to_ha, from_ha };
+        let ha_conn = HaConnection { to_ha, from_ha, event_listeners };
         Ok(ha_conn)
     }
 }
@@ -87,10 +78,11 @@ impl HaClient {
 pub struct HaConnection {
     pub(crate) to_ha: Sender<HaCommand>,
     pub(crate) from_ha: Receiver<HassResult<Response>>,
+    event_listeners: HaListener, 
 }
 
 impl HaConnection {
-    /// Authenticte with Home Assistant using a token.
+    /// Authenticte with Home Assistant using the access token.
     ///
     /// # Errors
     ///
@@ -116,6 +108,36 @@ impl HaConnection {
             _ => Err(HassError::UnknownPayloadReceived),
         }
     }
+        //used to subscribe to the event and if the subscribtion succeded the callback is registered
+    pub(crate) async fn subscribe_message<F>(
+        &mut self,
+        event_name: &str,
+        callback: F,
+    ) -> HassResult<String>
+    where
+        F: Fn(HaEvent) + Send + 'static,
+    {
+        //create the Event Subscribe Command
+        let cmd = HaCommand::SubscribeEvent(Subscribe {
+            id: None,
+            msg_type: "subscribe_events".to_owned(),
+            event_type: event_name.to_owned(),
+        });
+
+        //send command to subscribe to specific event
+        let response = self.command(cmd).await.unwrap();
+
+        //Add the callback in the event_listeners hashmap if the Subscription Response is successfull
+        match response {
+            Response::Result(v) if v.success == true => {
+                let mut table = self.event_listeners.lock().await;
+                table.insert(v.id, Box::new(callback));
+                return Ok("Ok".to_owned());
+            }
+            Response::Result(v) if v.success == false => return Err(HassError::ReponseError(v)),
+            _ => return Err(HassError::UnknownPayloadReceived),
+        }
+    }
     /// Sends an command and waits for result.
     ///
     /// Since events are managed directly in callbacks the returning message must be related to the
@@ -131,13 +153,14 @@ impl HaConnection {
             .await
             .map_err(|_| HassError::ConnectionError)?;
 
-        // Receive response from command (todo: check id matches)
+        // Receive response from Home Assistant
         self.from_ha
             .recv()
             .await
             .ok_or_else(|| HassError::ConnectionError)?
     }
 }
+
 fn get_last_seq(last_sequence: &Arc<AtomicU64>) -> Option<u64> {
     // Increase the last sequence and use the previous value in the request
     match last_sequence.fetch_add(1, Ordering::Relaxed) {
@@ -146,29 +169,21 @@ fn get_last_seq(last_sequence: &Arc<AtomicU64>) -> Option<u64> {
     }
 }
 
-//listen for client commands and transform those to TungsteniteMessage and send to gateway
+//listen for client commands, convert it to Message and send it to HA through websocket
 async fn sender_loop(
     last_sequence: Arc<AtomicU64>,
     mut sink: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
     mut from_client: Receiver<HaCommand>,
 ) -> HassResult<()> {
     tokio::spawn(async move {
-        //Fuse the stream such that poll_next will never again be called once it has finished.
-        //let mut fused = from_client.fuse();
         loop {
             if let Some(item) = from_client.recv().await {
                 match item {
-                    // Command::Close => {
-                    //     return sink
-                    //         .send(TungsteniteMessage::Close(None))
-                    //         .await
-                    //         .map_err(|_| HassError::ConnectionClosed);
-                    // }
                     HaCommand::AuthInfo(auth) => {
-                        // Transform command to TungsteniteMessage
+                        // Transform command to Message
                         let cmd = HaCommand::AuthInfo(auth).to_tungstenite_message();
 
-                        // Send the message to gateway
+                        // Send the message to HA
                         if let Err(e) = sink.send(cmd).await {
                             return HassError::TungsteniteError(e);
                         }
@@ -177,17 +192,19 @@ async fn sender_loop(
                     HaCommand::Ping(mut ping) => {
                         ping.id = get_last_seq(&last_sequence);
 
-                        // Transform command to TungsteniteMessage
+                        // Transform command to Message
                         let cmd = HaCommand::Ping(ping).to_tungstenite_message();
 
                         // Send the message to gateway
                         if let Err(e) = sink.send(cmd).await {
                             return HassError::TungsteniteError(e);
                         }
-                    } // Command::SubscribeEvent(mut subscribe) => {
+                    } 
+
+                    // Command::SubscribeEvent(mut subscribe) => {
                       //     subscribe.id = get_last_seq(&last_sequence);
                       //
-                      //     // Transform command to TungsteniteMessage
+                      //     // Transform command to Message
                       //     let cmd = Command::SubscribeEvent(subscribe).to_tungstenite_message();
                       //
                       //     // Send the message to gateway
@@ -198,7 +215,7 @@ async fn sender_loop(
                       // Command::Unsubscribe(mut unsubscribe) => {
                       //     unsubscribe.id = get_last_seq(&last_sequence);
                       //
-                      //     // Transform command to TungsteniteMessage
+                      //     // Transform command to Message
                       //     let cmd = Command::Unsubscribe(unsubscribe).to_tungstenite_message();
                       //
                       //     // Send the message to gateway
@@ -209,7 +226,7 @@ async fn sender_loop(
                       // Command::GetConfig(mut getconfig) => {
                       //     getconfig.id = get_last_seq(&last_sequence);
                       //
-                      //     // Transform command to TungsteniteMessage
+                      //     // Transform command to Message
                       //     let cmd = Command::GetConfig(getconfig).to_tungstenite_message();
                       //
                       //     // Send the message to gateway
@@ -220,7 +237,7 @@ async fn sender_loop(
                       // Command::GetStates(mut getstates) => {
                       //     getstates.id = get_last_seq(&last_sequence);
                       //
-                      //     // Transform command to TungsteniteMessage
+                      //     // Transform command to Message
                       //     let cmd = Command::GetStates(getstates).to_tungstenite_message();
                       //
                       //     // Send the message to gateway
@@ -231,7 +248,7 @@ async fn sender_loop(
                       // Command::GetServices(mut getservices) => {
                       //     getservices.id = get_last_seq(&last_sequence);
                       //
-                      //     // Transform command to TungsteniteMessage
+                      //     // Transform command to Message
                       //     let cmd = Command::GetServices(getservices).to_tungstenite_message();
                       //
                       //     // Send the message to gateway
@@ -242,7 +259,7 @@ async fn sender_loop(
                       // Command::GetPanels(mut getpanels) => {
                       //     getpanels.id = get_last_seq(&last_sequence);
                       //
-                      //     // Transform command to TungsteniteMessage
+                      //     // Transform command to Message
                       //     let cmd = Command::GetServices(getpanels).to_tungstenite_message();
                       //
                       //     // Send the message to gateway
@@ -253,7 +270,7 @@ async fn sender_loop(
                       // Command::CallService(mut callservice) => {
                       //     callservice.id = get_last_seq(&last_sequence);
                       //
-                      //     // Transform command to TungsteniteMessage
+                      //     // Transform command to Message
                       //     let cmd = Command::CallService(callservice).to_tungstenite_message();
                       //
                       //     // Send the message to gateway
@@ -265,7 +282,7 @@ async fn sender_loop(
             }
         }
     });
-
+    println!("Exiting send loop");
     Ok(())
 }
 
@@ -274,7 +291,7 @@ async fn receiver_loop(
     //    last_sequence: Arc<AtomicU64>,
     mut stream: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
     to_client: Sender<HassResult<Response>>,
-    //event_listeners: Arc<Mutex<HashMap<u64, Box<dyn Fn(WSEvent) + Send>>>>,
+    event_listeners: HaListener,
 ) -> HassResult<()> {
     tokio::spawn(async move {
         loop {
@@ -288,7 +305,6 @@ async fn receiver_loop(
                         match payload {
                             Ok(value) => match value {
                                 Response::Event(event) => {
-                                    println!("Event: {:?}", event);
                                     // let mut table = event_listeners.lock().await;
                                     //
                                     // match table.get_mut(&event.id) {
@@ -308,12 +324,12 @@ async fn receiver_loop(
                         };
                     }
                     // Just ignore these messages for now, I keep all variants for clearer code
-                    // what is ignored 
-                    Message::Binary(_) => {/*ignore*/},
-                    Message::Ping(_) => {/*ignore*/},
-                    Message::Pong(_) => {/*ignore*/},
-                    Message::Close(_) => {/*ignore*/},
-                    Message::Frame(_) => {/*ignore*/},
+                    // what is ignored
+                    Message::Binary(_) => { /*ignore*/ }
+                    Message::Ping(_) => { /*ignore*/ }
+                    Message::Pong(_) => { /*ignore*/ }
+                    Message::Close(_) => { /*ignore*/ }
+                    Message::Frame(_) => { /*ignore*/ }
                 },
 
                 Some(Err(error)) => match to_client
@@ -328,5 +344,6 @@ async fn receiver_loop(
             }
         }
     });
+    println!("Ending receiver loop");
     Ok(())
 }
