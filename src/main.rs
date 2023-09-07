@@ -1,3 +1,4 @@
+use r_hassclient::home_assistant::responses::WsEvent;
 use r_hassclient::client::HaClient;
 use tokio::signal;
 
@@ -20,6 +21,13 @@ async fn main() {
                 println!("Failed to login to Home Assistant, {}", err);
                 return;
             }
+            let pet = |item: WsEvent| {
+                println!("Closure is executed Event: {:?}", item);
+            };
+            if let Err(err) = conn.subscribe_message("state_changed", pet).await {
+                println!("Error subscribing to event: {}", err);
+                return;
+            }
         }
     }
 
@@ -30,4 +38,3 @@ async fn main() {
         }
     }
 }
-

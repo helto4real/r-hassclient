@@ -1,3 +1,3 @@
-pub(crate) mod model;
+pub mod model;
 pub(crate) mod commands;
-pub(crate) mod responses;
+pub mod responses;

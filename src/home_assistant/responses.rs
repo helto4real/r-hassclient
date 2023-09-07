@@ -1,5 +1,5 @@
 use serde_json::Value;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use crate::home_assistant::model::*;
 
 #[derive(Debug)]
@@ -38,16 +38,22 @@ pub(crate) struct AuthInvalid {
 
 
 #[derive(Debug)]
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 pub struct WsResult {
     pub(crate) id: u64,
     pub(crate) success: bool,
     pub(crate) result: Value,
+    pub(crate) error: Option<ErrorCode>,
 }
 
 #[derive(Debug)]
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 pub struct WsEvent {
     pub id: u64,
     pub event: HaEvent,
+}
+#[derive(Debug, Deserialize, PartialEq)]
+pub(crate) struct ErrorCode {
+    pub(crate) code: String,
+    pub(crate) message: String,
 }

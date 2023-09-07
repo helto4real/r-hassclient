@@ -1,5 +1,5 @@
 use crate::{
-    home_assistant::{commands::*, responses::Response, model::HaEvent},
+    home_assistant::{commands::*, responses::{Response, WsEvent}},
     types::{HassError, HassResult},
 };
 use colored::Colorize;
@@ -7,20 +7,23 @@ use futures_util::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use std::{sync::{
-    atomic::{AtomicU64, Ordering},
-    Arc,
-}, collections::HashMap};
-use tokio::{net::TcpStream, sync::Mutex};
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::{net::TcpStream, sync::Mutex};
 use tokio_tungstenite::{
     connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream,
 };
 
 pub(crate) type WsSink = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 pub(crate) type WsStream = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
-pub(crate) type HaListener = Arc<Mutex<HashMap<u64, Box<dyn Fn(HaEvent) + Send>>>>;
+pub(crate) type HaListener = Arc<Mutex<HashMap<u64, Box<dyn Fn(WsEvent) + Send>>>>;
 pub struct HaClient {}
 
 #[derive(Default)]
@@ -70,7 +73,11 @@ impl HaClient {
         receiver_loop(stream, to_client, event_listeners_clone_receiver).await?;
 
         println!("{}", "Successfully connected to Home Assistant!".green());
-        let ha_conn = HaConnection { to_ha, from_ha, event_listeners };
+        let ha_conn = HaConnection {
+            to_ha,
+            from_ha,
+            event_listeners,
+        };
         Ok(ha_conn)
     }
 }
@@ -78,7 +85,7 @@ impl HaClient {
 pub struct HaConnection {
     pub(crate) to_ha: Sender<HaCommand>,
     pub(crate) from_ha: Receiver<HassResult<Response>>,
-    event_listeners: HaListener, 
+    event_listeners: HaListener,
 }
 
 impl HaConnection {
@@ -108,14 +115,14 @@ impl HaConnection {
             _ => Err(HassError::UnknownPayloadReceived),
         }
     }
-        //used to subscribe to the event and if the subscribtion succeded the callback is registered
-    pub(crate) async fn subscribe_message<F>(
+    //used to subscribe to the event and if the subscribtion succeded the callback is registered
+    pub async fn subscribe_message<F>(
         &mut self,
         event_name: &str,
         callback: F,
     ) -> HassResult<String>
     where
-        F: Fn(HaEvent) + Send + 'static,
+        F: Fn(WsEvent) + Send + 'static,
     {
         //create the Event Subscribe Command
         let cmd = HaCommand::SubscribeEvent(Subscribe {
@@ -125,17 +132,17 @@ impl HaConnection {
         });
 
         //send command to subscribe to specific event
-        let response = self.command(cmd).await.unwrap();
+        let response = self.send_command(cmd).await.unwrap();
 
         //Add the callback in the event_listeners hashmap if the Subscription Response is successfull
         match response {
-            Response::Result(v) if v.success == true => {
+            Response::Result(v) if v.success => {
                 let mut table = self.event_listeners.lock().await;
                 table.insert(v.id, Box::new(callback));
-                return Ok("Ok".to_owned());
+                Ok("Ok".to_owned())
             }
-            Response::Result(v) if v.success == false => return Err(HassError::ReponseError(v)),
-            _ => return Err(HassError::UnknownPayloadReceived),
+            Response::Result(v) if !v.success => Err(HassError::ResponseError(v)),
+            _ => Err(HassError::UnknownPayloadReceived),
         }
     }
     /// Sends an command and waits for result.
@@ -199,20 +206,19 @@ async fn sender_loop(
                         if let Err(e) = sink.send(cmd).await {
                             return HassError::TungsteniteError(e);
                         }
-                    } 
+                    }
 
-                    // Command::SubscribeEvent(mut subscribe) => {
-                      //     subscribe.id = get_last_seq(&last_sequence);
-                      //
-                      //     // Transform command to Message
-                      //     let cmd = Command::SubscribeEvent(subscribe).to_tungstenite_message();
-                      //
-                      //     // Send the message to gateway
-                      //     if let Err(e) = sink.send(cmd).await {
-                      //         return Err(HassError::from(e));
-                      //     }
-                      // }
-                      // Command::Unsubscribe(mut unsubscribe) => {
+                    HaCommand::SubscribeEvent(mut subscribe) => {
+                        subscribe.id = get_last_seq(&last_sequence);
+
+                        // Transform command to Message
+                        let cmd = HaCommand::SubscribeEvent(subscribe).to_tungstenite_message();
+
+                        // Send the message to gateway
+                        if let Err(e) = sink.send(cmd).await {
+                            return HassError::TungsteniteError(e);
+                        }
+                    } // Command::Unsubscribe(mut unsubscribe) => {
                       //     unsubscribe.id = get_last_seq(&last_sequence);
                       //
                       //     // Transform command to Message
@@ -300,20 +306,20 @@ async fn receiver_loop(
                     Message::Text(data) => {
                         let payload: Result<Response, HassError> = serde_json::from_str(&data)
                             .map_err(|_| HassError::UnknownPayloadReceived);
-
                         //Match on payload, and act accordingly, like execute the client defined closure if any Event received
                         match payload {
                             Ok(value) => match value {
                                 Response::Event(event) => {
-                                    // let mut table = event_listeners.lock().await;
-                                    //
-                                    // match table.get_mut(&event.id) {
-                                    //     Some(client_func) => {
-                                    //         //execute client closure
-                                    //         client_func(event);
-                                    //     }
-                                    //     None => todo!("send unsubscribe request"),
-                                    // }
+                                    println!("Received event: {:?}", event);
+                                    let mut table = event_listeners.lock().await;
+
+                                    match table.get_mut(&event.id) {
+                                        Some(client_func) => {
+                                            //execute client closure
+                                            client_func(event);
+                                        }
+                                        None => todo!("send unsubscribe request"),
+                                    }
                                 }
                                 _ => {
                                     println!("Received message: {:?}", value);

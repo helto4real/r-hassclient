@@ -2,6 +2,8 @@ use simple_error::SimpleError;
 use std::fmt;
 use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 
+use crate::home_assistant::responses::WsResult;
+
 //pub (crate) type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 pub type HassResult<T> = std::result::Result<T, HassError>;
@@ -30,6 +32,7 @@ pub enum HassError {
     /// Returned for errors which do not fit any of the above criterias
     GenericError(String),
     UnknownPayloadReceived,
+    ResponseError(WsResult),
 }
 
 impl std::error::Error for HassError {}
@@ -51,12 +54,12 @@ impl fmt::Display for HassError {
             Self::SendError => write!(f, "Send Error"),
             // Self::ChannelSend(e) => write!(f, "Channel Send Error: {}", e),
             Self::UnknownPayloadReceived => write!(f, "The received payload is unknown"),
-            // Self::ReponseError(e) => write!(
-            //     f,
-            //     "The error code:{} with the error message: {}",
-            //     e.error.as_ref().unwrap().code,
-            //     e.error.as_ref().unwrap().message
-            // ),
+            Self::ResponseError(e) => write!(
+                f,
+                "The error code:{} with the error message: {}",
+                e.error.as_ref().unwrap().code,
+                e.error.as_ref().unwrap().message
+            ),
             Self::GenericError(detail) => write!(f, "Generic Error: {}", detail),
         }
     }
