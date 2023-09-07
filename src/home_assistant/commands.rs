@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tokio_tungstenite::tungstenite::Message;
 
 // Todo: these warnings is probably due to bad visibility that I do not really
 // understand yet :)
-#[derive(Serialize, PartialEq)]
+#[derive(Debug)]
 pub(crate) enum HaCommand {
     AuthInfo(Auth),
     Ping(Ask),
@@ -59,12 +59,6 @@ pub(crate) struct Auth {
     #[serde(rename = "type")]
     pub(crate) msg_type: String,
     pub(crate) access_token: String,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct SubscribeToEventsCommand {
-    #[serde(rename = "type")]
-    typ: String,
-    event_type: Option<String>,
 }
 //used to fetch from server
 #[derive(Debug, Serialize, PartialEq)]

@@ -1,8 +1,9 @@
 use simple_error::SimpleError;
+use tokio::sync::mpsc::error::SendError;
 use std::fmt;
 use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 
-use crate::home_assistant::responses::WsResult;
+use crate::{home_assistant::responses::WsResult, Response};
 
 //pub (crate) type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
@@ -19,7 +20,7 @@ pub enum HassError {
     /// Returned when serde was unable to deserialize the values
     UnableToDeserialize(serde_json::error::Error),
 
-    SendError,
+    SendError(String),
     /// Tungstenite error
     TungsteniteError(TungsteniteError),
 
@@ -51,7 +52,7 @@ impl fmt::Display for HassError {
                 write!(f, "Unable to deserialize the received value: {}", e)
             }
             Self::TungsteniteError(e) => write!(f, "Tungstenite Error: {}", e),
-            Self::SendError => write!(f, "Send Error"),
+            Self::SendError(e) => write!(f, "Send Error: {}", e),
             // Self::ChannelSend(e) => write!(f, "Channel Send Error: {}", e),
             Self::UnknownPayloadReceived => write!(f, "The received payload is unknown"),
             Self::ResponseError(e) => write!(
@@ -69,12 +70,11 @@ impl From<SimpleError> for HassError {
         HassError::GenericError(error.to_string())
     }
 }
-
-// impl From<tokio::sync::mpsc::error::SendError> for HassError {
-//     fn from(error: tokio::sync::mpsc:error::SendError) -> Self {
-//         HassError::SendError(error)
-//     }
-// }
+impl<T> From<tokio::sync::mpsc::error::SendError<T>> for HassError {
+    fn from(error: SendError<T>) -> Self {
+        HassError::SendError(error.to_string())
+    }
+}
 impl From<serde_json::error::Error> for HassError {
     fn from(error: serde_json::error::Error) -> Self {
         HassError::UnableToDeserialize(error)
