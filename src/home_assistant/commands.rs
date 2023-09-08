@@ -1,4 +1,5 @@
 use serde::Serialize;
+use serde_json::Value;
 use tokio_tungstenite::tungstenite::Message;
 
 // Todo: these warnings is probably due to bad visibility that I do not really
@@ -8,6 +9,7 @@ pub(crate) enum HaCommand {
     AuthInfo(Auth),
     Ping(Ask),
     SubscribeEvent(Subscribe),
+    CallService(CallService),
 }
 
 impl HaCommand {
@@ -45,10 +47,10 @@ impl HaCommand {
             //     let cmd_str = serde_json::to_string(&getpanels).unwrap();
             //     TungsteniteMessage::Text(cmd_str)
             // }
-            // Self::CallService(callservice) => {
-            //     let cmd_str = serde_json::to_string(&callservice).unwrap();
-            //     TungsteniteMessage::Text(cmd_str)
-            // }
+            Self::CallService(callservice) => {
+                let cmd_str = serde_json::to_string(&callservice).unwrap();
+                Message::Text(cmd_str)
+            }
             // Self::Close => todo!(),
         }
     }
@@ -75,4 +77,12 @@ pub(crate) struct Subscribe {
     pub(crate) msg_type: String,
     pub(crate) event_type: String,
 }
-
+#[derive(Debug, Serialize, PartialEq)]
+pub(crate) struct CallService {
+    pub(crate) id: Option<u64>,
+    #[serde(rename = "type")]
+    pub(crate) msg_type: String,
+    pub(crate) domain: String,
+    pub(crate) service: String,
+    pub(crate) service_data: Option<Value>,
+}

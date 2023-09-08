@@ -8,6 +8,7 @@ use futures_util::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
+use serde_json::Value;
 use std::{
     collections::HashMap,
     sync::{
@@ -146,6 +147,31 @@ impl HaConnection {
             _ => Err(HassError::UnknownPayloadReceived),
         }
     }
+    pub async fn call_service(
+        &mut self,
+        domain: String,
+        service: String,
+        service_data: Option<Value>,
+    ) -> HassResult<String> {
+        //Send GetStates command and expect a number of Entities
+        let services_req = HaCommand::CallService(CallService {
+            id: Some(0),
+            msg_type: "call_service".to_owned(),
+            domain,
+            service,
+            service_data,
+        });
+        let response = self.send_command(services_req).await?;
+
+        match response {
+            Response::Result(data) => match data.success {
+                true => Ok("command executed successfully".to_owned()),
+                false => Err(HassError::ResponseError(data)),
+            },
+            _ => Err(HassError::UnknownPayloadReceived),
+        }
+    }
+
     /// Sends an command and waits for result.
     ///
     /// Since events are managed directly in callbacks the returning message must be related to the
@@ -275,17 +301,17 @@ async fn sender_loop(
                       //         return Err(HassError::from(e));
                       //     }
                       // }
-                      // Command::CallService(mut callservice) => {
-                      //     callservice.id = get_last_seq(&last_sequence);
-                      //
-                      //     // Transform command to Message
-                      //     let cmd = Command::CallService(callservice).to_tungstenite_message();
-                      //
-                      //     // Send the message to gateway
-                      //     if let Err(e) = sink.send(cmd).await {
-                      //         return Err(HassError::from(e));
-                      //     }
-                      // }
+                      HaCommand::CallService(mut callservice) => {
+                          callservice.id = get_last_seq(&last_sequence);
+
+                          // Transform command to Message
+                          let cmd = HaCommand::CallService(callservice).to_tungstenite_message();
+
+                          // Send the message to gateway
+                          if let Err(e) = sink.send(cmd).await {
+                              return HassError::TungsteniteError(e);
+                          }
+                      }
                 }
             } else {
                 println!("channel is closede");

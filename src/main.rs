@@ -1,8 +1,7 @@
 use r_hassclient::client::HaClient;
 use r_hassclient::home_assistant::responses::WsEvent;
+use serde_json::json;
 use tokio::signal;
-
-pub mod home_assistant;
 
 #[tokio::main]
 async fn main() {
@@ -27,6 +26,18 @@ async fn main() {
         println!("Error subscribing to event: {}", err);
         return;
     }
+
+    if let Err(err) = conn
+        .call_service(
+            "input_boolean".to_owned(),
+            "toggle".to_owned(),
+            Some(json!({"entity_id":"input_boolean.test"})),
+        )
+        .await
+    {
+        println!("Failed to call service: {:?}", err);
+    }
+
     match signal::ctrl_c().await {
         Ok(()) => {}
         Err(err) => {
