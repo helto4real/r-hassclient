@@ -1,7 +1,11 @@
+use std::time::Duration;
+
 use r_hassclient::client::HaClient;
 use r_hassclient::home_assistant::responses::WsEvent;
+use r_hassclient::HaConnection;
 use serde_json::json;
 use tokio::signal;
+use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() {
@@ -27,16 +31,7 @@ async fn main() {
         return;
     }
 
-    if let Err(err) = conn
-        .call_service(
-            "input_boolean".to_owned(),
-            "toggle".to_owned(),
-            Some(json!({"entity_id":"input_boolean.test"})),
-        )
-        .await
-    {
-        println!("Failed to call service: {:?}", err);
-    }
+    do_stuff(conn).await;
 
     match signal::ctrl_c().await {
         Ok(()) => {}
@@ -46,4 +41,23 @@ async fn main() {
     }
 
     println!("Exit R-HassClient");
+}
+
+async fn do_stuff(mut conn: HaConnection) {
+    tokio::spawn(async move {
+        loop {
+            if let Err(err) = conn
+                .call_service(
+                    "input_boolean".to_owned(),
+                    "toggle".to_owned(),
+                    Some(json!({"entity_id":"input_boolean.test"})),
+                )
+                .await
+            {
+                println!("Failed to call service: {:?}", err);
+                break;
+            }
+            sleep(Duration::from_millis(1000)).await;
+        }
+    });
 }
