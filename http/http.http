@@ -1,0 +1,21 @@
+POST http://localhost:8125/api/onboarding/users
+Content-Type: application/json
+
+{
+    "client_id": "http://dummyClientId",
+    "name": "foobar",
+    "username": "test-user",
+    "password": "P@ssword!",
+    "language": "en-GB"
+}
+
+POST http://localhost:8125/auth/token
+Content-Type: application/json
+
+{
+    "grant_type": "authorization_code",
+    "code": "36fce3d47e754483b1daf760f0c21a1a",
+    "client_id": "http://dummyClientId"
+}
+
+GET http://localhost:8125

@@ -212,7 +212,6 @@ async fn sender_loop(
     tokio::spawn(async move {
         loop {
             if let Some(item) = from_client.recv().await {
-                println!("GOT ITEM {:?}", item);
                 match item {
                     HaCommand::AuthInfo(auth) => {
                         // Transform command to Message
@@ -314,7 +313,6 @@ async fn sender_loop(
                       }
                 }
             } else {
-                println!("channel is closede");
                 return HassError::GenericError("client channel is closed".to_string());
             }
         }
@@ -322,7 +320,7 @@ async fn sender_loop(
     Ok(())
 }
 
-//listen for gateway responses and either send to client the response or execute the defined closure for Event subscribtion
+//listen for Home Assistant responses and either send to client the response or execute the defined closure for Event subscribtion
 async fn receiver_loop(
     //    last_sequence: Arc<AtomicU64>,
     mut stream: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
@@ -340,7 +338,6 @@ async fn receiver_loop(
                         match payload {
                             Ok(value) => match value {
                                 Response::Event(event) => {
-                                    println!("Received event: {:?}", event);
                                     let mut table = event_listeners.lock().await;
 
                                     match table.get_mut(&event.id) {
@@ -352,7 +349,6 @@ async fn receiver_loop(
                                     }
                                 }
                                 _ => {
-                                    println!("Received message: {:?}", value);
                                     to_client.send(Ok(value)).await.unwrap();
                                 }
                             },
@@ -369,7 +365,7 @@ async fn receiver_loop(
                 },
 
                 Some(Err(error)) => {
-                    println!("Error!!: {:?}", error);
+                    eprintln!("Error!!: {:?}", error);
                     match to_client
                     .send(Err(HassError::TungsteniteError(error)))
                     .await
