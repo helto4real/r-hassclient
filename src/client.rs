@@ -73,12 +73,14 @@ impl HaClient {
         }
 
         receiver_loop(stream, to_client, event_listeners_clone_receiver).await?;
+        let last_sequence = Arc::new(AtomicU64::new(1));
 
         println!("{}", "Successfully connected to Home Assistant!".green());
         let ha_conn = HaConnection {
             to_ha,
             from_ha,
             event_listeners,
+            last_sequence,
         };
         Ok(ha_conn)
     }
@@ -88,6 +90,8 @@ pub struct HaConnection {
     pub(crate) to_ha: Sender<HaCommand>,
     pub(crate) from_ha: Receiver<HassResult<Response>>,
     event_listeners: HaListener,
+    // holds the id of the WS message
+    last_sequence: Arc<AtomicU64>,
 }
 
 impl HaConnection {
@@ -126,9 +130,10 @@ impl HaConnection {
     where
         F: Fn(WsEvent) + Send + 'static,
     {
+        let id = get_last_seq(&self.last_sequence).expect("could not read the Atomic value");
         //create the Event Subscribe Command
         let cmd = HaCommand::SubscribeEvent(Subscribe {
-            id: None,
+            id: Some(id),
             msg_type: "subscribe_events".to_owned(),
             event_type: event_name.to_owned(),
         });
@@ -147,15 +152,36 @@ impl HaConnection {
             _ => Err(HassError::UnknownPayloadReceived),
         }
     }
+
+    pub async fn ping(&mut self) -> HassResult<String> {
+        let id = get_last_seq(&self.last_sequence).expect("could not read the Atomic value");
+
+        //Send Ping command and expect Pong
+        let ping_req = HaCommand::Ping(Ask {
+            id: Some(id),
+            msg_type: "ping".to_owned(),
+        });
+
+        let response = self.send_command(ping_req).await?;
+
+        //Check the response, if the Pong was received
+        match response {
+            Response::Pong(_v) => Ok("pong".to_owned()),
+            Response::Result(err) => return Err(HassError::ResponseError(err)),
+            _ => return Err(HassError::UnknownPayloadReceived),
+        }
+    }
+
     pub async fn call_service(
         &mut self,
         domain: String,
         service: String,
         service_data: Option<Value>,
     ) -> HassResult<String> {
+        let id = get_last_seq(&self.last_sequence).expect("could not read the Atomic value");
         //Send GetStates command and expect a number of Entities
         let services_req = HaCommand::CallService(CallService {
-            id: Some(0),
+            id: Some(id), 
             msg_type: "call_service".to_owned(),
             domain,
             service,

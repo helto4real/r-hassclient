@@ -3,6 +3,8 @@ name = "r-hassclient"
 version = "0.1.0"
 edition = "2021"
 
+[profile.release]
+strip = "debuginfo"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -19,14 +21,12 @@ colored = "2.0.4"
 serde = { version = "1.0.188", features = ["derive"] }
 
 [dev-dependencies]
-# bollard = "0.13.0"
 bollard = "0.11.0"
 bollard-stubs = "1.41.0"
 ctor = "0.2.4"
 lazy_static = "1.4.0"
 reqwest = {versio = "0.11.20", features =["json"]}
 testcontainers = "0.14.0"
-#testcontainers = "0.14.0"
 tokio = { version = "1", features = [ "macros" ] }
 #[[bin]]
 #name = "r-hassclient"

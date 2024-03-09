@@ -190,3 +190,23 @@ async fn should_be_able_to_login_with_access_token() {
 
     conn.authenticate_with_token(&access_token).await.expect("Failed to authenticate with Home Assistant");
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn should_be_able_to_send_ping_message() {
+    // Send command to get the current test container info
+    HA_CONTAINER_COMMANDS.tx.send(ContainerCommands::FetchHaConnectionData).unwrap();
+    let (port, access_token) = HA_CONNECTION_INFO.rx.lock().await.recv().await.unwrap();
+    
+    let addr = format!("ws://localhost:{port}/api/websocket");
+    let addr = url::Url::parse(&addr).unwrap();
+
+    let mut client = HaClient::builder().build();
+    let mut conn = client
+        .connect_async(addr)
+        .await
+        .expect("Error connecting to Home Assistant!");
+
+    conn.authenticate_with_token(&access_token).await.expect("Failed to authenticate with Home Assistant");
+
+    conn.ping().await.expect("Failed to send ping message");
+}

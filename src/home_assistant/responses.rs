@@ -12,6 +12,7 @@ pub(crate) enum Response {
     AuthInvalid(AuthInvalid),
     Event(WsEvent),
     Result(WsResult),
+    Pong(WSPong),
     #[serde(other)]
     Unknown
 }
@@ -56,4 +57,10 @@ pub struct WsEvent {
 pub(crate) struct ErrorCode {
     pub(crate) code: String,
     pub(crate) message: String,
+}
+
+// this is received as a response to a ping request
+#[derive(Debug, Deserialize, PartialEq)]
+pub(crate) struct WSPong {
+    pub(crate) id: u64,
 }

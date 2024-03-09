@@ -11,7 +11,7 @@ use tokio::time::sleep;
 async fn main() {
     let addr = "ws://localhost:8124/api/websocket";
     let addr = url::Url::parse(addr).unwrap();
-    let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIwYmY3NjRmYWQ4MDM0ZjRmOWM2Y2E4ZDFhNTk0YWUzNCIsImlhdCI6MTY5Mjk3ODU1MiwiZXhwIjoyMDA4MzM4NTUyfQ.SvYtql9kB1MGZnEbBAtLX4EtrFktNUUCLMTAtQbg6FY";
+    let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIxZDc2MTQyZmY1MDQ0MzVkYWM0MzAyYzU2N2Q5MDU0OSIsImlhdCI6MTcwOTk3MjY2NCwiZXhwIjoyMDI1MzMyNjY0fQ.hm5VMYqCL8Dq-d8Lf9xU0q_4CA5UIqwno9R2ZG9G5LQ";
 
     let mut client = HaClient::builder().build();
     let mut conn = client
