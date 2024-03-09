@@ -1,10 +1,17 @@
-use std::{collections::HashMap, time::Duration};
-use std::{future::Future, thread};
+use ctor::{ctor, dtor};
 use r_hassclient::HaClient;
 use serde_json::json;
+use std::{collections::HashMap, time::Duration};
+use std::{future::Future, thread};
 use testcontainers::{core::WaitFor, *};
-use tokio::{time::sleep, sync::{Mutex, mpsc::{UnboundedSender, UnboundedReceiver, self}}, runtime};
-use ctor::{ctor, dtor};
+use tokio::{
+    runtime,
+    sync::{
+        mpsc::{self, UnboundedReceiver, UnboundedSender},
+        Mutex,
+    },
+    time::sleep,
+};
 
 #[macro_use]
 extern crate lazy_static;
@@ -72,7 +79,10 @@ fn on_shutdown() {
 
 // Clean up container by sending a command and wait for it to finish
 async fn clean_up() {
-    HA_CONTAINER_COMMANDS.tx.send(ContainerCommands::Stop).unwrap();
+    HA_CONTAINER_COMMANDS
+        .tx
+        .send(ContainerCommands::Stop)
+        .unwrap();
     HA_STOP_CONTAINER.rx.lock().await.recv().await;
     println!("HA container stopped.")
 }
@@ -94,12 +104,11 @@ fn execute_blocking<F: Future>(f: F) {
 /// will block until the container is ready.
 ///
 /// Home Assistant is provitioned with default user and a access_token to use in all tests.
-/// 
+///
 /// # Panics
 ///
 /// Panics if start the container fails
 async fn start_container() {
-
     let docker = clients::Cli::default();
 
     let container = docker.run(HaImage);
@@ -163,7 +172,10 @@ async fn start_container() {
     while let Some(command) = rx.recv().await {
         println!("Received container command: {:?}", command);
         match command {
-            ContainerCommands::FetchHaConnectionData => HA_CONNECTION_INFO.tx.send((port, access_token.to_string())).unwrap(),
+            ContainerCommands::FetchHaConnectionData => HA_CONNECTION_INFO
+                .tx
+                .send((port, access_token.to_string()))
+                .unwrap(),
             ContainerCommands::Stop => {
                 container.stop();
                 HA_STOP_CONTAINER.tx.send(()).unwrap();
@@ -176,9 +188,12 @@ async fn start_container() {
 #[tokio::test(flavor = "multi_thread")]
 async fn should_be_able_to_login_with_access_token() {
     // Send command to get the current test container info
-    HA_CONTAINER_COMMANDS.tx.send(ContainerCommands::FetchHaConnectionData).unwrap();
+    HA_CONTAINER_COMMANDS
+        .tx
+        .send(ContainerCommands::FetchHaConnectionData)
+        .unwrap();
     let (port, access_token) = HA_CONNECTION_INFO.rx.lock().await.recv().await.unwrap();
-    
+
     let addr = format!("ws://localhost:{port}/api/websocket");
     let addr = url::Url::parse(&addr).unwrap();
 
@@ -188,15 +203,20 @@ async fn should_be_able_to_login_with_access_token() {
         .await
         .expect("Error connecting to Home Assistant!");
 
-    conn.authenticate_with_token(&access_token).await.expect("Failed to authenticate with Home Assistant");
+    conn.authenticate_with_token(&access_token)
+        .await
+        .expect("Failed to authenticate with Home Assistant");
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn should_be_able_to_send_ping_message() {
     // Send command to get the current test container info
-    HA_CONTAINER_COMMANDS.tx.send(ContainerCommands::FetchHaConnectionData).unwrap();
+    HA_CONTAINER_COMMANDS
+        .tx
+        .send(ContainerCommands::FetchHaConnectionData)
+        .unwrap();
     let (port, access_token) = HA_CONNECTION_INFO.rx.lock().await.recv().await.unwrap();
-    
+
     let addr = format!("ws://localhost:{port}/api/websocket");
     let addr = url::Url::parse(&addr).unwrap();
 
@@ -206,7 +226,9 @@ async fn should_be_able_to_send_ping_message() {
         .await
         .expect("Error connecting to Home Assistant!");
 
-    conn.authenticate_with_token(&access_token).await.expect("Failed to authenticate with Home Assistant");
+    conn.authenticate_with_token(&access_token)
+        .await
+        .expect("Failed to authenticate with Home Assistant");
 
     conn.ping().await.expect("Failed to send ping message");
 }

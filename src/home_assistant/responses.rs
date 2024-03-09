@@ -1,4 +1,4 @@
-use serde_json::Value;
+// use serde_json::Value;
 use serde::Deserialize;
 use crate::home_assistant::model::*;
 
@@ -43,7 +43,7 @@ pub(crate) struct AuthInvalid {
 pub struct WsResult {
     pub(crate) id: u64,
     pub(crate) success: bool,
-    pub(crate) result: Value,
+    // pub(crate) result: Value,
     pub(crate) error: Option<ErrorCode>,
 }
 

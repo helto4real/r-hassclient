@@ -1,6 +1,8 @@
-
 use crate::{
-    home_assistant::{commands::*, responses::{Response, WsEvent}},
+    home_assistant::{
+        commands::*,
+        responses::{Response, WsEvent},
+    },
     types::{HassError, HassResult},
 };
 use colored::Colorize;
@@ -167,8 +169,8 @@ impl HaConnection {
         //Check the response, if the Pong was received
         match response {
             Response::Pong(_v) => Ok("pong".to_owned()),
-            Response::Result(err) => return Err(HassError::ResponseError(err)),
-            _ => return Err(HassError::UnknownPayloadReceived),
+            Response::Result(err) => Err(HassError::ResponseError(err)),
+            _ => Err(HassError::UnknownPayloadReceived),
         }
     }
 
@@ -181,7 +183,7 @@ impl HaConnection {
         let id = get_last_seq(&self.last_sequence).expect("could not read the Atomic value");
         //Send GetStates command and expect a number of Entities
         let services_req = HaCommand::CallService(CallService {
-            id: Some(id), 
+            id: Some(id),
             msg_type: "call_service".to_owned(),
             domain,
             service,
@@ -272,71 +274,71 @@ async fn sender_loop(
                             return HassError::TungsteniteError(e);
                         }
                     } // Command::Unsubscribe(mut unsubscribe) => {
-                      //     unsubscribe.id = get_last_seq(&last_sequence);
-                      //
-                      //     // Transform command to Message
-                      //     let cmd = Command::Unsubscribe(unsubscribe).to_tungstenite_message();
-                      //
-                      //     // Send the message to gateway
-                      //     if let Err(e) = sink.send(cmd).await {
-                      //         return Err(HassError::from(e));
-                      //     }
-                      // }
-                      // Command::GetConfig(mut getconfig) => {
-                      //     getconfig.id = get_last_seq(&last_sequence);
-                      //
-                      //     // Transform command to Message
-                      //     let cmd = Command::GetConfig(getconfig).to_tungstenite_message();
-                      //
-                      //     // Send the message to gateway
-                      //     if let Err(e) = sink.send(cmd).await {
-                      //         return Err(HassError::from(e));
-                      //     }
-                      // }
-                      // Command::GetStates(mut getstates) => {
-                      //     getstates.id = get_last_seq(&last_sequence);
-                      //
-                      //     // Transform command to Message
-                      //     let cmd = Command::GetStates(getstates).to_tungstenite_message();
-                      //
-                      //     // Send the message to gateway
-                      //     if let Err(e) = sink.send(cmd).await {
-                      //         return Err(HassError::from(e));
-                      //     }
-                      // }
-                      // Command::GetServices(mut getservices) => {
-                      //     getservices.id = get_last_seq(&last_sequence);
-                      //
-                      //     // Transform command to Message
-                      //     let cmd = Command::GetServices(getservices).to_tungstenite_message();
-                      //
-                      //     // Send the message to gateway
-                      //     if let Err(e) = sink.send(cmd).await {
-                      //         return Err(HassError::from(e));
-                      //     }
-                      // }
-                      // Command::GetPanels(mut getpanels) => {
-                      //     getpanels.id = get_last_seq(&last_sequence);
-                      //
-                      //     // Transform command to Message
-                      //     let cmd = Command::GetServices(getpanels).to_tungstenite_message();
-                      //
-                      //     // Send the message to gateway
-                      //     if let Err(e) = sink.send(cmd).await {
-                      //         return Err(HassError::from(e));
-                      //     }
-                      // }
-                      HaCommand::CallService(mut callservice) => {
-                          callservice.id = get_last_seq(&last_sequence);
+                    //     unsubscribe.id = get_last_seq(&last_sequence);
+                    //
+                    //     // Transform command to Message
+                    //     let cmd = Command::Unsubscribe(unsubscribe).to_tungstenite_message();
+                    //
+                    //     // Send the message to gateway
+                    //     if let Err(e) = sink.send(cmd).await {
+                    //         return Err(HassError::from(e));
+                    //     }
+                    // }
+                    // Command::GetConfig(mut getconfig) => {
+                    //     getconfig.id = get_last_seq(&last_sequence);
+                    //
+                    //     // Transform command to Message
+                    //     let cmd = Command::GetConfig(getconfig).to_tungstenite_message();
+                    //
+                    //     // Send the message to gateway
+                    //     if let Err(e) = sink.send(cmd).await {
+                    //         return Err(HassError::from(e));
+                    //     }
+                    // }
+                    // Command::GetStates(mut getstates) => {
+                    //     getstates.id = get_last_seq(&last_sequence);
+                    //
+                    //     // Transform command to Message
+                    //     let cmd = Command::GetStates(getstates).to_tungstenite_message();
+                    //
+                    //     // Send the message to gateway
+                    //     if let Err(e) = sink.send(cmd).await {
+                    //         return Err(HassError::from(e));
+                    //     }
+                    // }
+                    // Command::GetServices(mut getservices) => {
+                    //     getservices.id = get_last_seq(&last_sequence);
+                    //
+                    //     // Transform command to Message
+                    //     let cmd = Command::GetServices(getservices).to_tungstenite_message();
+                    //
+                    //     // Send the message to gateway
+                    //     if let Err(e) = sink.send(cmd).await {
+                    //         return Err(HassError::from(e));
+                    //     }
+                    // }
+                    // Command::GetPanels(mut getpanels) => {
+                    //     getpanels.id = get_last_seq(&last_sequence);
+                    //
+                    //     // Transform command to Message
+                    //     let cmd = Command::GetServices(getpanels).to_tungstenite_message();
+                    //
+                    //     // Send the message to gateway
+                    //     if let Err(e) = sink.send(cmd).await {
+                    //         return Err(HassError::from(e));
+                    //     }
+                    // }
+                    HaCommand::CallService(mut callservice) => {
+                        callservice.id = get_last_seq(&last_sequence);
 
-                          // Transform command to Message
-                          let cmd = HaCommand::CallService(callservice).to_tungstenite_message();
+                        // Transform command to Message
+                        let cmd = HaCommand::CallService(callservice).to_tungstenite_message();
 
-                          // Send the message to gateway
-                          if let Err(e) = sink.send(cmd).await {
-                              return HassError::TungsteniteError(e);
-                          }
-                      }
+                        // Send the message to gateway
+                        if let Err(e) = sink.send(cmd).await {
+                            return HassError::TungsteniteError(e);
+                        }
+                    }
                 }
             } else {
                 return HassError::GenericError("client channel is closed".to_string());
@@ -393,17 +395,17 @@ async fn receiver_loop(
                 Some(Err(error)) => {
                     eprintln!("Error!!: {:?}", error);
                     match to_client
-                    .send(Err(HassError::TungsteniteError(error)))
-                    .await
-                {
-                    //send the error to client ("unexpected message format, like a new error")
-                    Ok(_r) => {}
-                    Err(_e) => {}
-                }},
+                        .send(Err(HassError::TungsteniteError(error)))
+                        .await
+                    {
+                        //send the error to client ("unexpected message format, like a new error")
+                        Ok(_r) => {}
+                        Err(_e) => {}
+                    }
+                }
                 None => {}
-            
             }
-        };
+        }
     });
     Ok(())
 }
