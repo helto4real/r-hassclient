@@ -1,10 +1,3 @@
-use crate::{
-    home_assistant::{
-        commands::*,
-        responses::{Response, WsEvent},
-    },
-    types::{HassError, HassResult},
-};
 use colored::Colorize;
 use futures_util::{
     stream::{SplitSink, SplitStream},
@@ -23,6 +16,11 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::{net::TcpStream, sync::Mutex};
 use tokio_tungstenite::{
     connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream,
+};
+
+use crate::{
+    Ask, Auth, CallService, HaCommand, HassConfig, HassError, HassResult, Response, Subscribe,
+    WsEvent,
 };
 
 pub(crate) type WsSink = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
@@ -173,6 +171,34 @@ impl HaConnection {
             _ => Err(HassError::UnknownPayloadReceived),
         }
     }
+
+    /// This will get the current config of the Home Assistant.
+    ///
+    /// The server will respond with a result message containing the config.
+
+    // pub async fn get_config(&mut self) -> HassResult<HassConfig> {
+    //     let id = get_last_seq(&self.last_sequence).expect("could not read the Atomic value");
+    //
+    //     //Send GetConfig command and expect Pong
+    //     let config_req = HaCommand::GetConfig(Ask {
+    //         id: Some(id),
+    //         msg_type: "get_config".to_owned(),
+    //     });
+    //     let response = self.command(config_req).await?;
+    //
+    //     match response {
+    //         Response::Result(data) => match data.success {
+    //             true => {
+    //                 let config: HassConfig = serde_json::from_value(
+    //                     data.result.expect("Expecting to get the HassConfig"),
+    //                 )?;
+    //                 return Ok(config);
+    //             }
+    //             false => return Err(HassError::ReponseError(data)),
+    //         },
+    //         _ => return Err(HassError::UnknownPayloadReceived),
+    //     }
+    // }
 
     pub async fn call_service(
         &mut self,

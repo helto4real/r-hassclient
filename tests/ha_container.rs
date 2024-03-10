@@ -130,7 +130,7 @@ async fn start_container() {
 
     let url = format!("http://localhost:{}/api/onboarding/users", port);
 
-    println!("Sending post on url: {} with json {}", url, json);
+    // println!("Sending post on url: {} with json {}", url, json);
 
     let client = reqwest::Client::new();
 
@@ -139,7 +139,7 @@ async fn start_container() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json::<serde_json::Value>().await.unwrap();
 
-    println!("RAW: {:?}", resp);
+    // println!("RAW: {:?}", resp);
     let auth_code = resp.get("auth_code").unwrap().as_str().unwrap();
 
     println!(
@@ -205,7 +205,7 @@ async fn should_be_able_to_login_with_access_token() {
 
     conn.authenticate_with_token(&access_token)
         .await
-        .expect("Failed to authenticate with Home Assistant");
+        .expect("Failed to authenticate with Home Assistant")
 }
 
 #[tokio::test(flavor = "multi_thread")]

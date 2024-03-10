@@ -50,8 +50,7 @@ impl HaCommand {
             Self::CallService(callservice) => {
                 let cmd_str = serde_json::to_string(&callservice).unwrap();
                 Message::Text(cmd_str)
-            }
-            // Self::Close => todo!(),
+            } // Self::Close => todo!(),
         }
     }
 }
@@ -85,4 +84,10 @@ pub(crate) struct CallService {
     pub(crate) domain: String,
     pub(crate) service: String,
     pub(crate) service_data: Option<Value>,
+}
+#[derive(Debug, Serialize, PartialEq)]
+pub(crate) struct GetConfig {
+    pub(crate) id: Option<u64>,
+    #[serde(rename = "type")]
+    pub(crate) msg_type: String,
 }

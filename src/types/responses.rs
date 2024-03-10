@@ -1,9 +1,9 @@
 // use serde_json::Value;
 use serde::Deserialize;
-use crate::home_assistant::model::*;
 
-#[derive(Debug)]
-#[derive(Deserialize)]
+use crate::HaEvent;
+
+#[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Response {
@@ -14,7 +14,7 @@ pub(crate) enum Response {
     Result(WsResult),
     Pong(WSPong),
     #[serde(other)]
-    Unknown
+    Unknown,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -37,9 +37,7 @@ pub(crate) struct AuthInvalid {
     pub(crate) message: String,
 }
 
-
-#[derive(Debug)]
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct WsResult {
     pub(crate) id: u64,
     pub(crate) success: bool,
@@ -47,8 +45,7 @@ pub struct WsResult {
     pub(crate) error: Option<ErrorCode>,
 }
 
-#[derive(Debug)]
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct WsEvent {
     pub id: u64,
     pub event: HaEvent,

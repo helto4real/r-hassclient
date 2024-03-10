@@ -1,8 +1,8 @@
-pub mod client;
-pub mod home_assistant;
-pub mod types;
-extern crate simple_error;
+pub mod errors;
+pub use errors::{HassError, HassResult};
 
-pub use client::*;
-pub use home_assistant::*;
+pub mod types;
 pub use types::*;
+
+pub mod client;
+pub use client::HaClient;

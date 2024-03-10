@@ -29,3 +29,6 @@ tokio = { version = "1", features = [ "macros" ] }
 #[[bin]]
 #name = "r-hassclient"
 #path = "src/main.rs"
+[[example]]
+name = "subscribe_to_events"
+path = "examples/subscribe_to_events.rs"

@@ -3,7 +3,7 @@ use std::fmt;
 use tokio::sync::mpsc::error::SendError;
 use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 
-use crate::home_assistant::responses::WsResult;
+use crate::WsResult;
 
 //pub (crate) type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
