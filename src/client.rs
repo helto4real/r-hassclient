@@ -19,8 +19,8 @@ use tokio_tungstenite::{
 };
 
 use crate::{
-    Ask, Auth, CallService, HaCommand, HassConfig, HassError, HassResult, Response, Subscribe,
-    WsEvent,
+    Ask, Auth, CallService, CreateHelperCommand, HaCommand, HassConfig, HassError, HassResult,
+    Response, Subscribe, WsEvent,
 };
 
 pub(crate) type WsSink = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
@@ -226,6 +226,23 @@ impl HaConnection {
         }
     }
 
+    pub async fn create_helper(&mut self, helper: &str, name: &str) -> HassResult<String> {
+        let id = get_last_seq(&self.last_sequence).expect("could not read the Atomic value");
+        let create_helper_req = HaCommand::CreateHelper(CreateHelperCommand {
+            id: Some(id),
+            msg_type: format!("{helper}/create"),
+            name: name.to_string(),
+        });
+
+        let response = self.send_command(create_helper_req).await?;
+        match response {
+            Response::Result(data) => match data.success {
+                true => Ok("command executed successfully".to_owned()),
+                false => Err(HassError::ResponseError(data)),
+            },
+            _ => Err(HassError::UnknownPayloadReceived),
+        }
+    }
     /// Sends an command and waits for result.
     ///
     /// Since events are managed directly in callbacks the returning message must be related to the
@@ -299,7 +316,22 @@ async fn sender_loop(
                         if let Err(e) = sink.send(cmd).await {
                             return HassError::TungsteniteError(e);
                         }
-                    } // Command::Unsubscribe(mut unsubscribe) => {
+                    }
+
+                    HaCommand::CreateHelper(mut create_helper_command) => {
+                        create_helper_command.id = get_last_seq(&last_sequence);
+
+                        // Transform command to Message
+                        let cmd =
+                            HaCommand::CreateHelper(create_helper_command).to_tungstenite_message();
+
+                        // Send the message to gateway
+                        if let Err(e) = sink.send(cmd).await {
+                            return HassError::TungsteniteError(e);
+                        }
+                    }
+
+                    // Command::Unsubscribe(mut unsubscribe) => {
                     //     unsubscribe.id = get_last_seq(&last_sequence);
                     //
                     //     // Transform command to Message

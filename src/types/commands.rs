@@ -10,6 +10,7 @@ pub(crate) enum HaCommand {
     Ping(Ask),
     SubscribeEvent(Subscribe),
     CallService(CallService),
+    CreateHelper(CreateHelperCommand),
 }
 
 impl HaCommand {
@@ -50,7 +51,12 @@ impl HaCommand {
             Self::CallService(callservice) => {
                 let cmd_str = serde_json::to_string(&callservice).unwrap();
                 Message::Text(cmd_str)
-            } // Self::Close => todo!(),
+            }
+
+            Self::CreateHelper(create_helper_command) => {
+                let cmd_str = serde_json::to_string(&create_helper_command).unwrap();
+                Message::Text(cmd_str)
+            } 
         }
     }
 }
@@ -85,6 +91,15 @@ pub(crate) struct CallService {
     pub(crate) service: String,
     pub(crate) service_data: Option<Value>,
 }
+
+#[derive(Debug, Serialize, PartialEq)]
+pub(crate) struct CreateHelperCommand {
+    pub(crate) id: Option<u64>,
+    #[serde(rename = "type")]
+    pub(crate) msg_type: String,
+    pub(crate) name: String,
+}
+
 #[derive(Debug, Serialize, PartialEq)]
 pub(crate) struct GetConfig {
     pub(crate) id: Option<u64>,

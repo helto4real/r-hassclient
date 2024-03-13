@@ -1,9 +1,16 @@
 use ctor::{ctor, dtor};
-use r_hassclient::HaClient;
+use r_hassclient::client::HaConnection;
+use r_hassclient::{HaClient, HaEventData, HassResult, WsEvent};
 use serde_json::json;
+use std::borrow::Borrow;
+use std::fmt::format;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use std::{collections::HashMap, time::Duration};
 use std::{future::Future, thread};
 use testcontainers::{core::WaitFor, *};
+use tokio::sync::oneshot;
+use tokio::time::timeout;
 use tokio::{
     runtime,
     sync::{
@@ -44,11 +51,13 @@ lazy_static! {
     static ref HA_CONTAINER_COMMANDS: Channel<ContainerCommands> = channel();
     static ref HA_CONNECTION_INFO: Channel<(u16, String)> = channel();
     static ref HA_STOP_CONTAINER: Channel<()> = channel();
+    static ref HA_SETUP_TEST_DATA: Channel<()> = channel();
 }
 
 #[derive(Debug)]
 enum ContainerCommands {
     FetchHaConnectionData,
+    // AddTestData,
     Stop,
 }
 
@@ -176,6 +185,12 @@ async fn start_container() {
                 .tx
                 .send((port, access_token.to_string()))
                 .unwrap(),
+            // ContainerCommands::AddTestData => {
+            //     if let Err(e) = setup_test_data(&client, port, access_token).await {
+            //         panic!("Failed to setup test data: {}", e);
+            //     }
+            //     HA_SETUP_TEST_DATA.tx.send(()).unwrap();
+            // }
             ContainerCommands::Stop => {
                 container.stop();
                 HA_STOP_CONTAINER.tx.send(()).unwrap();
@@ -185,31 +200,37 @@ async fn start_container() {
     }
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn should_be_able_to_login_with_access_token() {
-    // Send command to get the current test container info
-    HA_CONTAINER_COMMANDS
-        .tx
-        .send(ContainerCommands::FetchHaConnectionData)
-        .unwrap();
-    let (port, access_token) = HA_CONNECTION_INFO.rx.lock().await.recv().await.unwrap();
-
-    let addr = format!("ws://localhost:{port}/api/websocket");
-    let addr = url::Url::parse(&addr).unwrap();
-
-    let mut client = HaClient::builder().build();
-    let mut conn = client
-        .connect_async(addr)
-        .await
-        .expect("Error connecting to Home Assistant!");
-
-    conn.authenticate_with_token(&access_token)
-        .await
-        .expect("Failed to authenticate with Home Assistant")
-}
+// async fn setup_test_data(client: &reqwest::Client, port: u16,  access_token: &str) -> Result<(), reqwest::Error> {
+//     let url = format!("http://localhost:{}/api/states/intput_boolean.test", port);
+//     let json = json!({
+//         "state": "off"
+//     });
+//     println!("Setting up test data: {}, token: {}", url, access_token);
+//     let resp = client
+//         .post(url)
+//         .header("Authorization", format!("Bearer {}", access_token))
+//         .json(&json)
+//         .send()
+//         .await
+//         .unwrap();
+//
+//     assert_eq!(resp.status(), 201);
+//
+//     Ok(())
+// }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn should_be_able_to_send_ping_message() {
+    let mut conn = match connect_to_home_assistant().await {
+        Err(err) => {
+            panic!("Failed to connect to Home Assistant: {}", err);
+        }
+        Ok(conn) => conn,
+    };
+    conn.ping().await.expect("Failed to send ping message");
+}
+
+async fn connect_to_home_assistant() -> HassResult<HaConnection> {
     // Send command to get the current test container info
     HA_CONTAINER_COMMANDS
         .tx
@@ -230,5 +251,66 @@ async fn should_be_able_to_send_ping_message() {
         .await
         .expect("Failed to authenticate with Home Assistant");
 
-    conn.ping().await.expect("Failed to send ping message");
+    Ok(conn)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn should_be_able_to_subscribe_to_events() {
+    let mut conn = match connect_to_home_assistant().await {
+        Err(err) => {
+            panic!("Failed to connect to Home Assistant: {}", err);
+        }
+        Ok(conn) => conn,
+    };
+
+    // Create a helper to test with
+    if let Err(helper_res) = conn.create_helper("input_boolean", "test").await {
+        panic!("Failed to create input_boolean helper: {}", helper_res);
+    }
+
+    let (tx, mut rx) = mpsc::channel(2);
+
+    let pet = move |item: WsEvent| {
+        println!("EVENT:");
+        let tx_clone = tx.clone();
+        let event_data = item.event.get_event_data();
+        match event_data {
+            Ok(HaEventData::StateChangedEvent(event)) => {
+                println!("State changed event:");
+                tokio::spawn(async move {
+                    let _ = tx_clone.send(()).await;
+                });
+                println!("{}", event);
+                // panic!("Should not receive state changed event");
+            }
+            Err(err) => {
+                println!("Error parsing event data: {}", err);
+            }
+        }
+    };
+
+    if let Err(err) = conn.subscribe_message("state_changed", pet).await {
+        println!("Failed to subscribe to state_changed events: {}", err);
+        return;
+    }
+
+    let res = conn
+        .call_service(
+            "input_boolean".to_owned(),
+            "toggle".to_owned(),
+            Some(json!({"entity_id":"input_boolean.test"})),
+        )
+        .await;
+
+    if let Err(err) = res {
+        println!("Failed to call service: {}", err);
+    }
+
+    // Set a timeout for waiting on the callback.
+    tokio::select! {
+        _ = tokio::time::sleep(Duration::from_millis(2000)) => {
+            panic!("Timeout waiting for state_changed event");
+        }
+       _= rx.recv() => { },
+    }
 }
