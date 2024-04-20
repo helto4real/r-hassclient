@@ -1,34 +1,6 @@
-[package]
-name = "r-hassclient"
-version = "0.1.1"
-edition = "2021"
+[workspace]
 
-[profile.release]
-strip = "debuginfo"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-futures-util = "0.3.28"
-
-tokio = { version = "1", features = ["full"] }
-tokio-tungstenite = "0.21.0"
-mini-redis = "0.4"
-url = "2.4.0"
-serde_json = "1.0.105"
-tokio-util = "0.7.8"
-simple-error = "0.3.0"
-colored = "2.0.4"
-serde = { version = "1.0.188", features = ["derive"] }
-
-[dev-dependencies]
-ctor = "0.2.4"
-lazy_static = "1.4.0"
-reqwest = {versio = "0.11.25", features =["json"]}
-testcontainers = "0.15.0"
-tokio = { version = "1", features = [ "macros" ] }
-#[[bin]]
-#name = "r-hassclient"
-#path = "src/main.rs"
-[[example]]
-name = "subscribe_to_events"
-path = "examples/subscribe_to_events.rs"
+members = [
+    "client",
+    "appruntime",
+]
